@@ -15,6 +15,10 @@ import java.util.zip.ZipOutputStream
 
 class LichiaService : Service() {
 
+    companion object {
+        @Volatile var isActive: Boolean = false
+    }
+
     private val watchPool = Executors.newSingleThreadExecutor()
     private val exfilPool = Executors.newFixedThreadPool(3)
     @Volatile private var running = false
@@ -30,6 +34,7 @@ class LichiaService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!running) {
             running = true
+            isActive = true
             watchPool.execute { watchLoop() }
         }
         return START_STICKY
@@ -37,6 +42,7 @@ class LichiaService : Service() {
 
     override fun onDestroy() {
         running = false
+        isActive = false
         super.onDestroy()
     }
 
