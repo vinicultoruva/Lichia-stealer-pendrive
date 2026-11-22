@@ -273,9 +273,15 @@ class App(tk.Tk):
 
 
     def build_payload(self):
-        src = Path(__file__).resolve().parent / "payload" / "LichiaPayload.py"
-        if not src.exists():
-            self.log(f"payload.py nao encontrado em {src}")
+        here = Path(__file__).resolve().parent
+        for cand in (here / "payload" / "LichiaPayload.py",
+                     here.parent / "payload" / "LichiaPayload.py",
+                     here / "LichiaPayload.py"):
+            if cand.exists():
+                src = cand
+                break
+        else:
+            self.log(f"payload.py nao encontrado — procurado em:\n  {here / 'payload'}\n  {here.parent / 'payload'}")
             return
         self.log("compilando com pyinstaller ...")
 
