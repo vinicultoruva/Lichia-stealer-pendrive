@@ -7,7 +7,8 @@ object Prefs {
     private const val FILE = "lichen"
 
     data class Cfg(val token: String, val chatId: String,
-                   val mode: String, val maxMb: Int)
+                   val mode: String, val maxMb: Int,
+                   val targetDisk: String = "")
 
     fun save(ctx: Context, c: Cfg) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
@@ -15,6 +16,7 @@ object Prefs {
             .putString("chat_id", c.chatId)
             .putString("modo", c.mode)
             .putInt("max_mb", c.maxMb)
+            .putString("target_disk", c.targetDisk)
             .apply()
     }
 
@@ -24,6 +26,7 @@ object Prefs {
             p.getString("token", "") ?: "",
             p.getString("chat_id", "") ?: "",
             p.getString("modo", "all") ?: "all",
-            p.getInt("max_mb", 200))
+            p.getInt("max_mb", 200),
+            p.getString("target_disk", "") ?: "")
     }
 }

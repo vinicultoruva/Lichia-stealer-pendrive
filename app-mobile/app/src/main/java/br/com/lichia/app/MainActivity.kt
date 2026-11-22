@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 import kotlinx.coroutines.delay
 
 
@@ -86,6 +87,7 @@ class MainActivity : ComponentActivity() {
         var chat by remember { mutableStateOf("") }
         var maxMb by remember { mutableStateOf("200") }
         var docs by remember { mutableStateOf(false) }
+        var target by remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) {
             val c = Prefs.read(ctx)
@@ -93,6 +95,19 @@ class MainActivity : ComponentActivity() {
             chat = c.chatId
             maxMb = c.maxMb.toString()
             docs = c.mode == "docs"
+            target = c.targetDisk
+        }
+
+        val disks by produceState(initialValue = listOf<String>()) {
+            while (true) {
+                value = File("/storage").listFiles()
+                    ?.filter {
+                        it.isDirectory &&
+                            it.name != "emulated" && it.name != "self"
+                    }
+                    ?.map { it.name } ?: emptyList()
+                delay(2000)
+            }
         }
 
         val active by produceState(initialValue = LichiaService.isActive) {
@@ -211,6 +226,24 @@ class MainActivity : ComponentActivity() {
 
 
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(7.dp)
+                            .background(Pink, CircleShape)
+                    )
+                    Spacer(Modifier.width(7.dp))
+                    Text("disco alvo", color = Cream,
+                        fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
+                Text(
+                    "Auto = qualquer pendrive novo. Escolha um disco para restringir.",
+                    color = Muted, fontSize = 12.sp
+                )
+                DiskChips(disks, target) { target = it }
+
+
+
                 val interaction = remember { MutableInteractionSource() }
                 val pressed by interaction.collectIsPressedAsState()
                 val scale by animateFloatAsState(
@@ -231,14 +264,19 @@ class MainActivity : ComponentActivity() {
                                    indication = null) {
                             Prefs.save(
                                 ctx, Prefs.Cfg(
-                                    token.trim(), chat.trim(),
-                                    if (docs) "docs" else "all",
-                                    maxMb.trim().toIntOrNull() ?: 200
+                                    token = token.trim(),
+                                    chatId = chat.trim(),
+                                    mode = if (docs) "docs" else "all",
+                                    maxMb = maxMb.trim().toIntOrNull() ?: 200,
+                                    targetDisk = target.trim()
                                 )
                             )
-                            ctx.startForegroundService(
-                                Intent(ctx, LichiaService::class.java)
-                            )
+                            val i = Intent(ctx, LichiaService::class.java)
+                            if (target.isNotBlank() &&
+                                File("/storage/$target").exists()) {
+                                i.putExtra("poke", "/storage/$target")
+                            }
+                            ctx.startForegroundService(i)
                             if (Build.VERSION.SDK_INT >= 33) {
                                 activity.requestPermissions(
                                     arrayOf(android.Manifest.permission
@@ -339,6 +377,42 @@ class MainActivity : ComponentActivity() {
                 unfocusedContainerColor = CardBg
             )
         )
+    }
+
+
+    @Composable
+    private fun DiskChips(disks: List<String>, selected: String,
+                          onSelect: (String) -> Unit) {
+        val items = listOf("") + disks
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.chunked(2).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (item in row) {
+                        val sel = selected == item
+                        Button(
+                            onClick = { onSelect(item) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (sel) Pink else CardBg,
+                                contentColor = if (sel) Color.White else Muted
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                        ) {
+                            Text(
+                                if (item.isEmpty()) "Auto" else item,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style
+                                    .TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
     }
 
 
