@@ -620,7 +620,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (argc <= 1) install = fs::exists(StageExe());
 
     if (install) {
-        if (!IsAdmin() && ElevateSelf()) return;
+        if (!IsAdmin() && ElevateSelf()) return 0;
         Install();
     } else if (watch) {
         Hide(StageDir());
