@@ -1,0 +1,27 @@
+name: build-native
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compile native payload
+        shell: cmd
+        run: |
+          cd native
+          rc /nologo /fo lichia.res lichia_res.rc
+          cl /nologo /O2 /EHsc /std:c++20 /Fe:LichiaNative.exe lichia_native.cpp lichia.res /link /MANIFEST:NO /DEBUG:NONE /INCREMENTAL:NO /PDBALTPATH:lic.pdb /FILEALIGN:512
+          python patch_pe.py LichiaNative.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lichia-native-exe
+          path: native/LichiaNative.exe

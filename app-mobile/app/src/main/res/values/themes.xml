@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Lichia" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#14040B</item>
+        <item name="android:navigationBarColor">#14040B</item>
+        <item name="android:windowBackground">#14040B</item>
+    </style>
+</resources>
