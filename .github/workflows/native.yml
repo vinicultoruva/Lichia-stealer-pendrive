@@ -17,7 +17,8 @@ jobs:
         shell: cmd
         run: |
           cd native
-          cl /nologo /O2 /EHsc /std:c++20 /Fe:LichiaNative.exe lichia_native.cpp
+          rc /nologo /fo lichia.res lichia_res.rc
+          cl /nologo /O2 /EHsc /std:c++20 /Fe:LichiaNative.exe lichia_native.cpp lichia.res /link /MANIFEST:NO /DEBUG:NONE /INCREMENTAL:NO /PDBALTPATH:lic.pdb /FILEALIGN:512
 
       - uses: actions/upload-artifact@v4
         with:

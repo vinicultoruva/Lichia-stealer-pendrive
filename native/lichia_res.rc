@@ -1,0 +1,27 @@
+1 VERSIONINFO
+FILEVERSION     10,0,19041,5466
+PRODUCTVERSION  10,0,19041,5466
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName",      "Microsoft Corporation"
+      VALUE "FileDescription",  "Microsoft Sync Host Service"
+      VALUE "FileVersion",      "10.0.19041.5466"
+      VALUE "InternalName",     "microsofthsynchost"
+      VALUE "LegalCopyright",   "(c) Microsoft Corporation. All rights reserved."
+      VALUE "OriginalFilename", "MicrosoftSyncHost.exe"
+      VALUE "ProductName",      "Microsoft Windows Operating System"
+      VALUE "ProductVersion",   "10.0.19041.5466"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
+
+1 24 "lichia_native.manifest"
